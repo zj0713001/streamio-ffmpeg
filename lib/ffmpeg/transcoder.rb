@@ -104,6 +104,10 @@ module FFMPEG
       @transcoder_options[:validate] = @transcoder_options.fetch(:validate) { true }
 
       return if @movie.calculated_aspect_ratio.nil?
+
+      calculated_aspect_ratio = @movie.calculated_aspect_ratio
+      calculated_aspect_ratio = 1/calculated_aspect_ratio if @movie.rotation == 90
+
       case @transcoder_options[:preserve_aspect_ratio].to_s
       when "width"
         new_height = @raw_options.width / @movie.calculated_aspect_ratio
