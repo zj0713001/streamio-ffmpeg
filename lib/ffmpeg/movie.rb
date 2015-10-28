@@ -5,7 +5,7 @@ module FFMPEG
     attr_reader :path, :duration, :time, :bitrate, :rotation, :creation_time
     attr_reader :video_stream, :video_codec, :video_bitrate, :colorspace, :resolution, :sar, :dar
     attr_reader :audio_stream, :audio_codec, :audio_bitrate, :audio_sample_rate
-    attr_reader :container
+    attr_reader :container, :displaymatrix_rotation
 
     def initialize(path)
       raise Errno::ENOENT, "the file '#{path}' does not exist" unless File.exists?(path)
@@ -35,12 +35,15 @@ module FFMPEG
 
       output[/rotate\ {1,}:\ {1,}(\d*)/]
       @rotation = $1 ? $1.to_i : nil
-	
+
       output[/Video:\ (.*)/]
       @video_stream = $1
 
       output[/Audio:\ (.*)/]
       @audio_stream = $1
+
+      output[/displaymatrix: rotation of (-?[0-9\.]*) degrees/]
+      @displaymatrix_rotation = $1.to_i
 
       if video_stream
         commas_except_in_parenthesis = /(?:\([^()]*\)|[^,])+/ # regexp to handle "yuv420p(tv, bt709)" colorspace etc from http://goo.gl/6oi645
@@ -75,7 +78,9 @@ module FFMPEG
     end
 
     def calculated_aspect_ratio
-      aspect_from_dar || aspect_from_dimensions
+      aspect_ratio = aspect_from_dar || aspect_from_dimensions
+      aspect_ratio = 1/aspect_ratio if !aspect_ratio.nil? && (@rotation + @displaymatrix_rotation)%360 == 0
+      aspect_ratio
     end
 
     def calculated_pixel_aspect_ratio
